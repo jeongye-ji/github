@@ -1,0 +1,188 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <limits.h>
+
+typedef struct {
+    long long mat[2][2];
+} Matrix;
+
+long long power_basic_recursive(long long base, long long exponent) {
+    if (exponent == 0) return 1;
+    return base * power_basic_recursive(base, exponent - 1);
+}
+
+long long power_basic_iterative(long long base, long long exponent) {
+    long long result = 1;
+    for (long long i = 0; i < exponent; i++) {
+        result *= base;
+    }
+    return result;
+}
+
+long long power_divide_and_conquer(long long base, long long exponent) {
+    if (exponent == 0) return 1;
+    long long half = power_divide_and_conquer(base, exponent / 2);
+    if (exponent % 2 == 0) {
+        return half * half;
+    } else {
+        return half * half * base;
+    }
+}
+
+long long power_bitwise(long long base, long long exponent) {
+    long long result = 1;
+    while (exponent > 0) {
+        if (exponent & 1) {
+            result *= base;
+        }
+        base *= base;
+        exponent >>= 1;
+    }
+    return result;
+}
+
+long long power_modular(long long base, long long exponent, long long mod) {
+    long long result = 1;
+    base %= mod;
+    while (exponent > 0) {
+        if (exponent & 1) {
+            result = (result * base) % mod;
+        }
+        base = (base * base) % mod;
+        exponent >>= 1;
+    }
+    return result;
+}
+
+double power_negative(double base, long long exponent) {
+    if (exponent == 0) return 1.0;
+    if (exponent < 0) {
+        return 1.0 / power_negative(base, -exponent);
+    }
+    return base * power_negative(base, exponent - 1);
+}
+
+bool will_overflow_mul(long long a, long long b) {
+    if (a == 0 || b == 0) return false;
+    if (a > 0 && b > 0 && a > LLONG_MAX / b) return true;
+    if (a < 0 && b < 0 && a < LLONG_MAX / b) return true;
+    if (a > 0 && b < 0 && b < LLONG_MIN / a) return true;
+    if (a < 0 && b > 0 && a < LLONG_MIN / b) return true;
+    return false;
+}
+
+long long power_safe(long long base, long long exponent, bool *overflow) {
+    *overflow = false;
+    long long result = 1;
+    for (long long i = 0; i < exponent; i++) {
+        if (will_overflow_mul(result, base)) {
+            *overflow = true;
+            return -1;
+        }
+        result *= base;
+    }
+    return result;
+}
+
+Matrix multiply_matrix(Matrix a, Matrix b) {
+    Matrix res;
+    res.mat[0][0] = a.mat[0][0] * b.mat[0][0] + a.mat[0][1] * b.mat[1][0];
+    res.mat[0][1] = a.mat[0][0] * b.mat[0][1] + a.mat[0][1] * b.mat[1][1];
+    res.mat[1][0] = a.mat[1][0] * b.mat[0][0] + a.mat[1][1] * b.mat[1][0];
+    res.mat[1][1] = a.mat[1][0] * b.mat[0][1] + a.mat[1][1] * b.mat[1][1];
+    return res;
+}
+
+Matrix power_matrix(Matrix base, long long exponent) {
+    Matrix res = {{{1, 0}, {0, 1}}};
+    while (exponent > 0) {
+        if (exponent & 1) {
+            res = multiply_matrix(res, base);
+        }
+        base = multiply_matrix(base, base);
+        exponent >>= 1;
+    }
+    return res;
+}
+
+long long fibonacci_via_power(long long n) {
+    if (n == 0) return 0;
+    Matrix T = {{{1, 1}, {1, 0}}};
+    Matrix res = power_matrix(T, n - 1);
+    return res.mat[0][0];
+}
+
+void print_separator() {
+    printf("====================================================\n");
+}
+
+void process_integer_power(long long base, long long exponent) {
+    print_separator();
+    printf(" [정수 연산 테스트]\n");
+    print_separator();
+    
+    printf("1. 단순 재귀: %lld\n", power_basic_recursive(base, exponent));
+    printf("2. 단순 반복: %lld\n", power_basic_iterative(base, exponent));
+    printf("3. 분할 정복: %lld\n", power_divide_and_conquer(base, exponent));
+    printf("4. 비트 연산: %lld\n", power_bitwise(base, exponent));
+    
+    bool overflow_flag = false;
+    long long safe_res = power_safe(base, exponent, &overflow_flag);
+    if (overflow_flag) {
+        printf("5. 오버플로우 검지: 오버플로우 발생 (LLONG_MAX 초과)\n");
+    } else {
+        printf("5. 오버플로우 검지: %lld\n", safe_res);
+    }
+}
+
+void process_modular_power(long long base, long long exponent, long long mod) {
+    print_separator();
+    printf(" [모듈러 거듭제곱 연산 (%lld mod %lld)]\n", base, mod);
+    print_separator();
+    printf("결과: %lld\n", power_modular(base, exponent, mod));
+}
+
+void process_floating_power(double base, long long exponent) {
+    print_separator();
+    printf(" [실수/음수 지수 연산]\n");
+    print_separator();
+    printf("결과: %.8f\n", power_negative(base, exponent));
+}
+
+void process_fibonacci_application(long long n) {
+    print_separator();
+    printf(" [행렬 거듭제곱 응용: 피보나치 제 %lld항]\n", n);
+    print_separator();
+    printf("결과: %lld\n", fibonacci_via_power(n));
+}
+
+int main() {
+    long long base, exponent, mod;
+    
+    printf("밑(base)과 지수(exponent) 입력: ");
+    if (scanf("%lld %lld", &base, &exponent) != 2) {
+        printf("입력 오류가 발생했습니다.\n");
+        return 1;
+    }
+
+    if (exponent >= 0) {
+        process_integer_power(base, exponent);
+        
+        printf("\n모듈러 값(mod) 입력 (예: 1000000007): ");
+        if (scanf("%lld", &mod) == 1 && mod > 0) {
+            process_modular_power(base, exponent, mod);
+        }
+    } else {
+        printf("\n지수가 음수이므로 실수형 연산을 수행합니다.\n");
+    }
+
+    process_floating_power((double)base, exponent);
+    
+    if (exponent >= 0 && exponent <= 90) {
+        process_fibonacci_application(exponent);
+    }
+
+    print_separator();
+    return 0;
+}
